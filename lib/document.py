@@ -683,6 +683,8 @@ class Document (object):
         arr = helpers.gdkpixbuf2numpy(pixbuf)
         s = tiledsurface.Surface()
         bbox = s.load_from_numpy(arr, x, y)
+        #added x, y pointer position here
+        #cur_x, cur_y = self.tdw.get_cursor_in_model_coordinates() 
         self.do(command.LoadLayer(self, s))
         return bbox
 
@@ -768,6 +770,10 @@ class Document (object):
         self.clear()
         bbox = self.load_layer_from_pixbuf(pixbuf)
         self.set_frame(bbox, user_initiated=False)
+    
+    #import without clear
+    def import_from_pixbuf(self, pixbuf):
+        self.load_layer_from_pixbuf(pixbuf)
 
 
     def save(self, filename, **kwargs):
@@ -834,6 +840,26 @@ class Document (object):
             raise SaveLoadError, _('Error while loading: IOError %s') % e
         self.command_stack.clear()
         self.unsaved_painting_time = 0.0
+        
+    def insert(self, filename):
+        if not os.path.isfile(filename):
+            raise SaveLoadError, _('File does not exist: %s') % repr(filename)
+        if not os.access(filename,os.R_OK):
+            raise SaveLoadError, _('You do not have the necessary permissions to open file: %s') % repr(filename)
+        junk, ext = os.path.splitext(filename)
+        ext = ext.lower().replace('.', '')
+        load = getattr(self, 'import_' + ext, self._unsupported)
+        try:
+            load(filename)
+        except GObject.GError, e:
+            traceback.print_exc()
+            raise SaveLoadError, _('Error while loading: GError %s') % e
+        except IOError, e:
+            traceback.print_exc()
+            raise SaveLoadError, _('Error while loading: IOError %s') % e
+        self.command_stack.clear()
+        self.unsaved_painting_time = 0.0
+        #self.call_doc_observers()
 
     def _unsupported(self, filename, *args, **kwargs):
         raise SaveLoadError, _('Unknown file format extension: %s') % repr(filename)
@@ -882,6 +908,22 @@ class Document (object):
         self.clear()
         bbox = self.load_layer_from_png(filename, 0, 0, feedback_cb)
         self.set_frame(bbox, user_initiated=False)
+    #added this   
+    def import_png(self, filename, feedback_cb=None):
+        self.add_layer(self.layer_stack.current_path)
+        fp = open(filename, 'rb')
+        pixbuf = pixbuf_from_stream(fp, feedback_cb)
+        fp.close()
+        self.import_from_pixbuf(pixbuf)
+        
+    def import_jpg(self, filename, feedback_cb=None):
+        self.add_layer(self.layer_stack.current_path)
+        fp = open(filename, 'rb')
+        pixbuf = pixbuf_from_stream(fp, feedback_cb)
+        fp.close()
+        self.import_from_pixbuf(pixbuf)
+    import_jpeg = import_jpg
+     
 
     def load_from_pixbuf_file(self, filename, feedback_cb=None):
         """Load from a file which GdkPixbuf can open"""

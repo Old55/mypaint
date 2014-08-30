@@ -264,6 +264,12 @@ class FileHandler(object):
                     self.doc.restore_brush_from_stroke_info(si)
                     break
 
+    def import_file(self, filename):
+        try:
+            self.doc.model.insert(filename)
+        except document.SaveLoadError, e:
+            self.app.message_dialog(str(e),type=gtk.MESSAGE_ERROR)
+
     def open_scratchpad(self, filename):
         try:
             self.app.scratchpad_doc.model.load(filename, feedback_cb=self.gtk_main_tick)
@@ -428,6 +434,42 @@ class FileHandler(object):
                 self.open_file(dialog.get_filename().decode('utf-8'))
         finally:
             dialog.destroy()
+            
+##added this function
+    def import_cb(self, action):
+        if not self.confirm_destructive_action():
+            return
+        dialog = gtk.FileChooserDialog(_("Open..."), self.app.drawWindow,
+                                       gtk.FILE_CHOOSER_ACTION_OPEN,
+                                       (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                        gtk.STOCK_OPEN, gtk.RESPONSE_OK))
+        dialog.set_default_response(gtk.RESPONSE_OK)
+
+        preview = gtk.Image()
+        dialog.set_preview_widget(preview)
+        dialog.connect("update-preview", self.update_preview_cb, preview)
+
+        add_filters_to_dialog(self.file_filters, dialog)
+
+        if self.filename:
+            dialog.set_filename(self.filename)
+        else:
+            # choose the most recent save folder
+            self.set_recent_items()
+            for item in reversed(self.recent_items):
+                uri = item.get_uri()
+                fn = fileutils.uri2filename(uri)
+                dn = os.path.dirname(fn)
+                if os.path.isdir(dn):
+                    dialog.set_current_folder(dn)
+                    break
+        try:
+            if dialog.run() == gtk.RESPONSE_OK:
+                dialog.hide()
+                self.import_file(dialog.get_filename().decode('utf-8'))
+        finally:
+            dialog.destroy()
+
 
     def open_scratchpad_dialog(self):
         dialog = gtk.FileChooserDialog(_("Open Scratchpad..."), self.app.drawWindow,

@@ -459,6 +459,9 @@ class Document (CanvasController): #TODO: rename to "DocumentController"#
         k('Right', lambda(action): self.pan(self.PAN_RIGHT))
         k('Down', lambda(action): self.pan(self.PAN_DOWN))
         k('Up', lambda(action): self.pan(self.PAN_UP))
+        
+        #implement layer drop
+        k('<control><shift>d', lambda(action): self.drop_layer())
 
         k('<control>Left', 'RotateLeft')
         k('<control>Right', 'RotateRight')
@@ -1437,6 +1440,31 @@ class Document (CanvasController): #TODO: rename to "DocumentController"#
         elif direction == self.PAN_DOWN: self.tdw.scroll(0, +step)
         else: raise TypeError, 'unsupported pan() direction=%s' % (direction,)
         self.notify_view_changed()
+        
+    #paul adds drop layer
+    
+    def drop_layer(self):
+        # move layer to current pointer position
+	bbox = self.model.get_bbox()
+        cur_x = bbox.x
+        cur_y = bbox.y
+
+	if bbox.w == 0 or bbox.h == 0:
+            print "WARNING: empty document, nothing to move"
+            return
+	else:
+            pixbuf = self.model.layer_stack.current.render_as_pixbuf(*bbox)
+
+        x, y = self.tdw.get_cursor_in_model_coordinates()
+	#print cur_x, cur_y, bbox.w, bbox.h
+        #print x, y
+        #self.model.clear_layer()
+	#reset the layer to origin of bounding box before making the move
+        #self.model.load_layer_from_pixbuf(pixbuf, cur_x*-1, cur_y*-1)
+	
+ 
+        self.model.clear_current_layer()
+        self.model.load_layer_from_pixbuf(pixbuf, int(x), int(y))
 
     def zoom(self, direction, center=CENTER_ON_POINTER):
         """Handles zoom in increments.
