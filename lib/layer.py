@@ -251,6 +251,7 @@ class LayerBase (object):
         self._root_ref = None  # or a weakref to the root
         #: True if the layer was marked as selected when loaded.
         self.initially_selected = False
+        self._basefile = None
 
     @classmethod
     def new_from_openraster(cls, orazip, elem, tempdir, feedback_cb,
@@ -397,6 +398,11 @@ class LayerBase (object):
         the tree.
         """
         return self._name
+        
+    @property
+    def basefile(self):
+    
+        return self.basefile
 
     @name.setter
     def name(self, name):

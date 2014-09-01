@@ -232,6 +232,17 @@ def scale_proportionally(pixbuf, w, h, shrink_only=True):
     return pixbuf.scale_simple(new_width, new_height,
                                GdkPixbuf.InterpType.BILINEAR)
 
+#added to scale a layer converted to a pixbuf
+def scale_incrementally(pixbuf, direction):
+    width, height = pixbuf.get_width(), pixbuf.get_height()
+    w = width+direction
+    h = height+direction
+    scale = min(w / float(width), h / float(height))
+    new_width, new_height = int(width * scale), int(height * scale)
+    new_width = max(new_width, 1)
+    new_height = max(new_height, 1)
+    return pixbuf.scale_simple(new_width, new_height,
+                               GdkPixbuf.InterpType.BILINEAR)
 
 def pixbuf_thumbnail(src, w, h, alpha=False):
     """Creates a centered thumbnail of a GdkPixbuf.

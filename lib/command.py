@@ -629,14 +629,14 @@ class AddLayer (Command):
     """Creates and inserts a new painting layer into the layer stack"""
 
     def __init__(self, doc, insert_path, name=None,
-                 layer_class=lib.layer.PaintingLayer, **kwds):
+                 layer_class=lib.layer.PaintingLayer,basefile=None, **kwds):
         super(AddLayer, self).__init__(doc, **kwds)
         layers = doc.layer_stack
         self._insert_path = insert_path
         self._prev_currentlayer_path = None
         self._layer_class = layer_class
         self._layer_kwds = kwds
-        self._layer = layer_class(name=name, **kwds)
+        self._layer = layer_class(name=name,basefile=basefile, **kwds)
         self._layer.set_symmetry_axis(self.doc.get_symmetry_axis())
 
     @property
