@@ -229,7 +229,9 @@ class Document (CanvasController): #TODO: rename to "DocumentController"#
     PAN_RIGHT = 2   #: Stepwise panning direction: right
     PAN_UP = 3   #: Stepwise panning direction: up
     PAN_DOWN = 4   #: Stepwise panning direction: down
-
+    # Constants for layer scaling
+    SCALE_UP = 10
+    SCALE_DOWN = -10
     # Picking
     MIN_PICKING_OPACITY = 0.1
     PICKING_RADIUS = 5
@@ -462,6 +464,9 @@ class Document (CanvasController): #TODO: rename to "DocumentController"#
         
         #implement layer drop
         k('<control><shift>d', lambda(action): self.drop_layer())
+        #scale layer up/down
+        k('<control><shift>Up', lambda(action): self.scale_layer(self.SCALE_UP))
+        k('<control><shift>Down', lambda(action): self.scale_layer(self.SCALE_DOWN))
 
         k('<control>Left', 'RotateLeft')
         k('<control>Right', 'RotateRight')
@@ -1442,29 +1447,38 @@ class Document (CanvasController): #TODO: rename to "DocumentController"#
         self.notify_view_changed()
         
     #paul adds drop layer
-    
+
     def drop_layer(self):
         # move layer to current pointer position
-	bbox = self.model.get_bbox()
+        layer = self.model.layer_stack.current
+	bbox = layer.get_bbox()
         cur_x = bbox.x
         cur_y = bbox.y
-
-	if bbox.w == 0 or bbox.h == 0:
-            print "WARNING: empty document, nothing to move"
-            return
-	else:
-            pixbuf = self.model.layer_stack.current.render_as_pixbuf(*bbox)
-
         x, y = self.tdw.get_cursor_in_model_coordinates()
-	#print cur_x, cur_y, bbox.w, bbox.h
-        #print x, y
-        #self.model.clear_layer()
-	#reset the layer to origin of bounding box before making the move
-        #self.model.load_layer_from_pixbuf(pixbuf, cur_x*-1, cur_y*-1)
-	
- 
+        #borrowed this from the move layer funciton
+        dx = x - bbox.x
+        dy = y - bbox.y
+        redraw_bboxes = layer.translate(dx, dy)
+        #self._notify_canvas_observers(redraw_bboxes)
+        
+    #this works but degrades quality. Can we scale without converting to pixbuf?    
+    def scale_layer(self, direction):
+        layer = self.model.layer_stack.current
+        bbox = layer.get_bbox()
+        lname = layer.basefile
+        print lname
+        cur_x = bbox.x
+        cur_y = bbox.y
+      
+        if bbox.w == 0 or bbox.h == 0:
+            print "WARNING: empty document, nothing to scale"
+            return
+        else:
+            pixbuf = self.model.layer_stack.current.render_as_pixbuf(*bbox)
+        
         self.model.clear_current_layer()
-        self.model.load_layer_from_pixbuf(pixbuf, int(x), int(y))
+        self.model.scale_layer_from_pixbuf(pixbuf,direction,cur_x,cur_y)
+        
 
     def zoom(self, direction, center=CENTER_ON_POINTER):
         """Handles zoom in increments.

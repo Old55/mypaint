@@ -625,7 +625,7 @@ class Document (object):
     ## More layer stack commands
 
 
-    def add_layer(self, path, layer_class=layer.PaintingLayer, **kwds):
+    def add_layer(self, path, basename=None, layer_class=layer.PaintingLayer,**kwds):
         """Undoably adds a new layer at a specified path
 
         :param path: Path for the new layer
@@ -636,9 +636,11 @@ class Document (object):
 
         See: `lib.command.AddLayer`
         """
+        print basename
         self.do(command.AddLayer(
             self, path,
             name=None,
+            basefile=basename,
             layer_class=layer_class,
             **kwds
             ))
@@ -687,7 +689,16 @@ class Document (object):
         #cur_x, cur_y = self.tdw.get_cursor_in_model_coordinates() 
         self.do(command.LoadLayer(self, s))
         return bbox
-
+        
+    def scale_layer_from_pixbuf(self, pixbuf, direction, x, y):
+        
+        pixbuf = helpers.scale_incrementally(pixbuf, direction)
+        #print 'scale'
+        arr = helpers.gdkpixbuf2numpy(pixbuf)
+        s = tiledsurface.Surface()
+        bbox = s.load_from_numpy(arr, x, y)
+        self.do(command.LoadLayer(self, s))
+        return bbox
 
     def load_layer_from_png(self, filename, x=0, y=0, feedback_cb=None):
         s = tiledsurface.Surface()
@@ -848,7 +859,8 @@ class Document (object):
             raise SaveLoadError, _('You do not have the necessary permissions to open file: %s') % repr(filename)
         junk, ext = os.path.splitext(filename)
         ext = ext.lower().replace('.', '')
-        load = getattr(self, 'import_' + ext, self._unsupported)
+        #load = getattr(self, 'import_' + ext, self._unsupported)
+        load = getattr(self, 'import_from_pixbuf_file', self._unsupported)
         try:
             load(filename)
         except GObject.GError, e:
@@ -908,23 +920,7 @@ class Document (object):
         self.clear()
         bbox = self.load_layer_from_png(filename, 0, 0, feedback_cb)
         self.set_frame(bbox, user_initiated=False)
-    #added this   
-    def import_png(self, filename, feedback_cb=None):
-        self.add_layer(self.layer_stack.current_path)
-        fp = open(filename, 'rb')
-        pixbuf = pixbuf_from_stream(fp, feedback_cb)
-        fp.close()
-        self.import_from_pixbuf(pixbuf)
-        
-    def import_jpg(self, filename, feedback_cb=None):
-        self.add_layer(self.layer_stack.current_path)
-        fp = open(filename, 'rb')
-        pixbuf = pixbuf_from_stream(fp, feedback_cb)
-        fp.close()
-        self.import_from_pixbuf(pixbuf)
-    import_jpeg = import_jpg
      
-
     def load_from_pixbuf_file(self, filename, feedback_cb=None):
         """Load from a file which GdkPixbuf can open"""
         fp = open(filename, 'rb')
@@ -932,9 +928,18 @@ class Document (object):
         fp.close()
         self.load_from_pixbuf(pixbuf)
 
+    def import_from_pixbuf_file(self, filename, feedback_cb=None):
+        """Load from a file which GdkPixbuf can open"""
+        self.add_layer(self.layer_stack.current_path,filename)
+        fp = open(filename, 'rb')
+        pixbuf = pixbuf_from_stream(fp, feedback_cb)
+        fp.close()
+        self.import_from_pixbuf(pixbuf)
+
     load_jpg = load_from_pixbuf_file
     load_jpeg = load_from_pixbuf_file
-
+    import_jpeg = import_from_pixbuf_file
+    
 
     @fileutils.via_tempfile
     def save_jpg(self, filename, quality=90, **kwargs):

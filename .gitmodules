@@ -1,3 +1,6 @@
 [submodule "brushlib"]
 	path = brushlib
 	url = ../libmypaint.git
+[submodule "libmypaint"]
+	path = libmypaint
+	url = https://github.com/mypaint/libmypaint.git
